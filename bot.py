@@ -3,12 +3,14 @@ import json
 import os
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 
-TOKEN = os.environ.get("BOT_TOKEN").strip()
+# Safe token loading
+token_env = os.environ.get("BOT_TOKEN")
+if not token_env:
+    print("ERROR: BOT_TOKEN is missing!")
+    exit(1)
+TOKEN = token_env.strip()
 
-# ================== VERIFICATION LINK ==================
 VERIFY_LINK = "https://qkzpkdm.com/cl/74eeb46afeff0fcd"
-# ========================================================
-
 TIMEBUCKS_REF_LINK = "https://timebucks.com/?refID=229160569"
 PEERPURSE_CODE = "360366"
 
@@ -18,7 +20,6 @@ pending_withdraw = {}
 DATA_FILE = "data.json"
 WITHDRAW_MIN = 3500
 
-# ----- Reply Keyboard (no Earn button) -----
 main_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
 main_keyboard.row(KeyboardButton("💳 Balance"), KeyboardButton("🏧 Withdraw"))
 main_keyboard.row(KeyboardButton("🔗 Referral"), KeyboardButton("🎁 TimeBucks"))
@@ -37,7 +38,20 @@ bot = telebot.TeleBot(TOKEN)
 def is_verified(uid):
     return user_data.get(uid, {}).get("verified", False)
 
-# ---------- START ----------
+# ---------- START (REFERRAL) ----------
+# This MUST be placed above the normal start command
+@bot.message_handler(commands=['start'], func=lambda msg: msg.text and msg.text.startswith('/start ref_'))
+def start_ref(msg):
+    ref_id = msg.text.split()[1].replace('ref_', '')
+    uid = str(msg.from_user.id)
+    if uid not in user_data:
+        user_data[uid] = {"balance": 0, "referrer": ref_id, "ref_credited": False, "verified": False}
+    else:
+        user_data[uid]["referrer"] = ref_id
+    save_data()
+    start(msg)
+
+# ---------- START (NORMAL) ----------
 @bot.message_handler(commands=['start'])
 def start(msg):
     uid = str(msg.from_user.id)
@@ -96,7 +110,6 @@ def verify_done(call):
         call.message.message_id,
         parse_mode="Markdown"
     )
-    # Referral bonus: credit referrer if this user was referred
     ref_id = user_data[uid].get("referrer")
     if ref_id and not user_data[uid].get("ref_credited", False):
         if ref_id in user_data and user_data[ref_id].get("verified", False):
@@ -108,7 +121,7 @@ def verify_done(call):
             except:
                 pass
 
-# ---------- UNIVERSAL TEXT HANDLER (buttons + bank details) ----------
+# ---------- UNIVERSAL TEXT HANDLER ----------
 BUTTON_MAP = {
     "💳 Balance": "/balance",
     "🏧 Withdraw": "/withdraw",
@@ -186,17 +199,6 @@ def referral(msg):
         return
     bot_name = bot.get_me().username
     bot.send_message(msg.chat.id, f"🔗 Your referral link:\nhttps://t.me/{bot_name}?start=ref_{msg.from_user.id}\n\nShare it. When someone joins and completes verification, you get ₦100.", reply_markup=main_keyboard)
-
-@bot.message_handler(commands=['start'], func=lambda msg: msg.text and msg.text.startswith('/start ref_'))
-def start_ref(msg):
-    ref_id = msg.text.split()[1].replace('ref_', '')
-    uid = str(msg.from_user.id)
-    if uid not in user_data:
-        user_data[uid] = {"balance": 0, "referrer": ref_id, "ref_credited": False, "verified": False}
-    else:
-        user_data[uid]["referrer"] = ref_id
-    save_data()
-    start(msg)
 
 # ---------- EXTRA TASK 1 (TIMEBUCKS) ----------
 @bot.message_handler(commands=['jointask1'])
