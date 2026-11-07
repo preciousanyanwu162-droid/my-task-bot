@@ -10,7 +10,7 @@ if not token_env:
     exit(1)
 TOKEN = token_env.strip()
 
-VERIFY_LINK = "https://qkzpkdm.com/cl/74eeb46afeff0fcd"
+VERIFY_LINK = "https://qxokrmq.com/cl/f51f1f05aeed571e"
 TIMEBUCKS_REF_LINK = "https://timebucks.com/?refID=229160569"
 PEERPURSE_CODE = "360366"
 
